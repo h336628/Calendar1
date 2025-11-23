@@ -100,7 +100,7 @@
     <div id="root" class="w-full h-full max-w-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm relative shadow-2xl overflow-hidden border-x border-pink-100 dark:border-gray-800 transition-colors duration-300"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
         
         // --- 內建圖示庫 (SVG Paths) ---
         const ICONS = {
@@ -147,7 +147,7 @@
             cocoa: "normal_cocoa.png",
             shy: "normal_shy.png",
             worry: "normal_worry.png",
-            lovey_happy: "normal_Lovey_happy.png" // 新增：對應開心/愛心對話
+            lovey_happy: "normal_Lovey_happy.png" 
         };
 
         // --- 對話資料庫 ---
@@ -219,6 +219,346 @@
             return days;
         };
 
+        // --- 獨立組件定義 ---
+
+        const LockScreen = ({ settings, inputPassword, setInputPassword, handleUnlock }) => (
+            <div className="flex flex-col items-center justify-center h-full bg-pink-50/50 dark:bg-gray-900 p-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full bg-[url('Love_Happy.png')] bg-cover opacity-10 blur-sm z-0"></div>
+                <div className="bg-white/80 dark:bg-gray-800/90 p-8 rounded-3xl shadow-xl z-10 text-center backdrop-blur-md border border-pink-100 dark:border-gray-700">
+                    <div className="bg-pink-100 dark:bg-gray-700 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                        <Icon name="Lock" className="text-pink-400 dark:text-pink-300" size={32} />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">歡迎回來，{settings.name}</h2>
+                    <input type="password" value={inputPassword} onChange={(e) => setInputPassword(e.target.value)} placeholder="請輸入密碼" className="bg-pink-50 dark:bg-gray-700 px-4 py-3 rounded-2xl border-2 border-pink-100 dark:border-gray-600 text-center text-lg mb-4 w-full focus:outline-none focus:border-pink-300 transition-colors dark:text-white" maxLength={4} />
+                    <button onClick={handleUnlock} className="bg-gradient-to-r from-pink-400 to-pink-500 text-white w-full py-3 rounded-2xl font-bold shadow-lg shadow-pink-200 dark:shadow-none active:scale-95 transition-transform">解鎖</button>
+                </div>
+            </div>
+        );
+
+        const Onboarding = ({ settings, setSettings, setView }) => (
+            <div className="flex flex-col items-center justify-center h-full p-6 relative dark:bg-gray-900">
+                <div className="absolute top-10 right-10 text-pink-200 opacity-50"><Icon name="Heart" size={40} /></div>
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl w-full max-w-sm border-2 border-pink-50 dark:border-gray-700 relative z-10">
+                    <div className="text-center mb-8"><h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">暖男日曆</h1><p className="text-pink-400 text-sm">溫柔守護妳的每一天</p></div>
+                    <div className="space-y-5">
+                        <div><label className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1">怎麼稱呼妳呢？</label><input value={settings.name} onChange={e => setSettings({...settings, name: e.target.value})} className="w-full mt-1 p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl border border-pink-100 dark:border-gray-600 focus:ring-2 focus:ring-pink-200 focus:outline-none" placeholder="例如：小美" /></div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div><label className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1">平均週期</label><input type="number" value={settings.cycleLength} onChange={e => setSettings({...settings, cycleLength: e.target.value})} className="w-full mt-1 p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl border border-pink-100 dark:border-gray-600 text-center" /></div>
+                            <div><label className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1">經期天數</label><input type="number" value={settings.periodLength} onChange={e => setSettings({...settings, periodLength: e.target.value})} className="w-full mt-1 p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl border border-pink-100 dark:border-gray-600 text-center" /></div>
+                        </div>
+                    </div>
+                    <button onClick={() => { 
+                        if(settings.name && settings.cycleLength && settings.periodLength) {
+                            setSettings({...settings, hasOnboarded: true}); setView('calendar'); 
+                        } else {
+                            alert("請先填寫資料喔！");
+                        }
+                    }} className="w-full mt-8 bg-gradient-to-r from-pink-400 to-rose-400 text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-200 dark:shadow-none hover:shadow-pink-300 transition-all active:scale-95">開始使用</button>
+                </div>
+            </div>
+        );
+
+        const Mascot = ({ settings, mascotState, mascotMessage, handleCalendarPoke }) => {
+            if (!settings.enableMascot) return null;
+            const handleImgError = (e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; };
+            return (
+                <div className="fixed bottom-24 left-4 z-40 flex items-end animate-pop">
+                    <div className="relative group cursor-pointer" onClick={handleCalendarPoke}>
+                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-white dark:border-gray-700 shadow-[0_4px_20px_rgba(255,182,193,0.6)] bg-pink-100 relative z-10 transition-transform transform active:scale-95">
+                            <img src={Q_IMAGES[mascotState]} alt="Mascot" className="w-full h-full object-cover" onError={handleImgError} />
+                            <div className="absolute inset-0 hidden items-center justify-center bg-pink-100 text-4xl">{mascotState === 'smile' ? '👦🏻' : mascotState === 'worry' ? '😟' : mascotState === 'love' ? '🥰' : '😉'}</div>
+                        </div>
+                        <div className="absolute left-16 bottom-16 bg-white dark:bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-700 w-48 z-20 animate-float origin-bottom-left">
+                            <p className="text-gray-600 dark:text-gray-200 text-sm font-medium leading-relaxed whitespace-pre-line">{mascotMessage}</p>
+                            <Icon name="Heart" size={12} className="text-pink-400 absolute -top-2 -right-2 fill-current animate-bounce" />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const CalendarView = ({ currentDate, setCurrentDate, selectedDate, setSelectedDate, logs, settings, togglePeriod, setShowLogModal }) => {
+            // --- 拖曳邏輯 ---
+            const [toolPos, setToolPos] = useState(null);
+            const [isDragging, setIsDragging] = useState(false);
+            const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+            const handleTouchStart = (e) => {
+                const touch = e.touches[0];
+                const rect = e.currentTarget.getBoundingClientRect();
+                setDragStart({ x: touch.clientX - rect.left, y: touch.clientY - rect.top });
+                if (!toolPos) setToolPos({ x: rect.left, y: rect.top });
+                setIsDragging(true);
+            };
+
+            const handleTouchMove = (e) => {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                setToolPos({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
+            };
+
+            const handleTouchEnd = () => setIsDragging(false);
+
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const daysInMonth = getMonthDays(year, month);
+            const firstDayObj = new Date(year, month, 1);
+            const startPadding = firstDayObj.getDay(); 
+
+            const getDayStatus = (dateStr) => {
+                if (logs[dateStr]?.isPeriod) return 'period-active';
+                let lastPeriodStart = null;
+                const sortedDates = Object.keys(logs).sort().reverse();
+                const lastPeriodDate = sortedDates.find(d => logs[d].isPeriod);
+                if (lastPeriodDate) {
+                    const lastDate = new Date(lastPeriodDate);
+                    const cycleLen = parseInt(settings.cycleLength);
+                    const diffDays = Math.floor((new Date(dateStr) - lastDate) / (1000 * 60 * 60 * 24));
+                    if (new Date(dateStr) < new Date() && !logs[dateStr]?.isPeriod) return 'none';
+                    const cycleDay = diffDays % cycleLen;
+                    if (cycleDay >= 0 && cycleDay < settings.periodLength) {
+                        if (new Date(dateStr) < new Date()) return 'none';
+                        return 'period-predicted';
+                    }
+                    if (cycleDay === cycleLen - 14) return 'ovulation';
+                }
+                return 'none';
+            };
+
+            return (
+                <div className="flex flex-col h-full relative">
+                    <div className="flex items-center justify-between px-6 pt-10 pb-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10">
+                        <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 bg-white dark:bg-gray-800 rounded-full text-pink-400 shadow-sm active:scale-95"><Icon name="ChevronLeft" /></button>
+                        <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-100 tracking-widest">{year}.{String(month + 1).padStart(2, '0')}</h2>
+                        <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 bg-white dark:bg-gray-800 rounded-full text-pink-400 shadow-sm active:scale-95"><Icon name="ChevronRight" /></button>
+                    </div>
+
+                    <div className="grid grid-cols-7 text-center py-2 text-pink-300 font-bold text-xs bg-white/30 dark:bg-gray-800/30">
+                        <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-3 p-4 overflow-y-auto no-scrollbar pb-64">
+                        {Array(startPadding).fill(null).map((_, i) => <div key={`pad-${i}`} />)}
+                        
+                        {daysInMonth.map(dateStr => {
+                            const status = getDayStatus(dateStr);
+                            const isSelected = dateStr === selectedDate;
+                            const isToday = dateStr === formatDate(new Date());
+                            const logExists = logs[dateStr];
+                            let bgClass = "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-sm border border-transparent";
+                            if (status === 'period-active') bgClass = "bg-rose-400 text-white shadow-rose-200 shadow-md border-rose-400";
+                            else if (status === 'period-predicted') bgClass = "bg-pink-50 dark:bg-gray-700 text-pink-400 border-dashed border-pink-200 dark:border-gray-600 border-2";
+                            else if (status === 'ovulation') bgClass = "bg-purple-50 dark:bg-gray-700 text-purple-500 border-purple-200 dark:border-purple-900 border";
+                            if (isSelected) bgClass += " ring-2 ring-pink-400 ring-offset-2 ring-offset-pink-50 dark:ring-offset-gray-900 scale-105 z-10";
+                            return (
+                                <div key={dateStr} onClick={() => setSelectedDate(dateStr)} className={`aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all relative ${bgClass}`}>
+                                    <span className={`text-sm font-bold ${isToday ? 'underline decoration-2 underline-offset-2' : ''}`}>{parseInt(dateStr.split('-')[2])}</span>
+                                    <div className="flex gap-1 mt-1 h-1.5">{logExists?.symptoms?.length > 0 && <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>}{logExists?.temp && <div className="w-1.5 h-1.5 rounded-full bg-blue-300"></div>}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    
+                    {/* 可拖曳工具面板 */}
+                    <div 
+                        className="absolute z-30 animate-pop flex flex-col gap-2 w-28"
+                        style={toolPos ? { left: toolPos.x, top: toolPos.y } : { right: '1rem', bottom: '6rem' }}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg border border-white/50 dark:border-gray-700 text-center">
+                            <div className="text-[10px] text-gray-400 font-bold mb-0.5">SELECTED</div>
+                            <div className="text-2xl font-black text-gray-700 dark:text-white font-mono leading-none">{selectedDate.split('-')[2]}</div>
+                            <div className="text-xs font-bold text-gray-400">{selectedDate.split('-')[1]}月</div>
+                        </div>
+
+                        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-2 rounded-2xl shadow-lg border border-white/50 dark:border-gray-700 flex flex-col gap-2">
+                            <button onClick={() => togglePeriod(selectedDate)} className={`w-full py-4 rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-90 ${logs[selectedDate]?.isPeriod ? 'bg-rose-400 text-white shadow-md' : 'bg-pink-50 dark:bg-gray-700 text-pink-400'}`}>
+                                <Icon name="Droplet" size={20} className={logs[selectedDate]?.isPeriod ? 'fill-white' : 'fill-pink-400'} />
+                                <span className="text-xs font-bold">{logs[selectedDate]?.isPeriod ? '結束' : '來了'}</span>
+                            </button>
+                            <button onClick={() => setShowLogModal(true)} className="w-full py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-xs font-bold active:scale-95 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                詳細
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const LogModal = ({ showLogModal, setShowLogModal, logs, setLogs, selectedDate }) => {
+            if (!showLogModal) return null;
+            const currentLog = logs[selectedDate] || { symptoms: [], flow: '', temp: '' };
+            const symptomsList = ['😭 經痛', '😫 頭痛', '😮‍💨 腰痠', '😡 易怒', '😣 疲憊', '🍫 貪吃', '😞 憂鬱', '🎈 胸漲'];
+            const save = (key, val) => { setLogs(prev => ({ ...prev, [selectedDate]: { ...prev[selectedDate], [key]: val } })); };
+            const toggleSym = (s) => { const list = currentLog.symptoms || []; save('symptoms', list.includes(s) ? list.filter(i => i !== s) : [...list, s]); };
+            return (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-end justify-center" onClick={(e) => e.target === e.currentTarget && setShowLogModal(false)}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2rem] p-6 pb-12 animate-float shadow-2xl">
+                        <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-6"></div>
+                        <h3 className="text-lg font-bold text-gray-700 dark:text-white mb-6 flex items-center gap-2"><div className="w-2 h-6 bg-pink-400 rounded-full"></div>詳細記錄</h3>
+                        <div className="space-y-6">
+                            <div><label className="text-sm font-bold text-gray-400 mb-2 block">經血量</label><div className="flex gap-3">{['少', '中', '多'].map(l => (<button key={l} onClick={() => save('flow', l)} className={`flex-1 py-3 rounded-2xl text-sm font-bold transition-all ${currentLog.flow === l ? 'bg-rose-400 text-white shadow-md scale-105' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>{l}</button>))}</div></div>
+                            <div><label className="text-sm font-bold text-gray-400 mb-2 block">症狀</label><div className="grid grid-cols-4 gap-2">{symptomsList.map(s => (<button key={s} onClick={() => toggleSym(s)} className={`py-2 rounded-xl text-xs font-bold transition-all ${currentLog.symptoms?.includes(s) ? 'bg-pink-100 text-pink-600 border border-pink-200' : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 text-gray-500 dark:text-gray-300'}`}>{s.split(' ')[1]}</button>))}</div></div>
+                            <div><label className="text-sm font-bold text-gray-400 mb-2 block">體溫</label><input type="number" value={currentLog.temp || ''} onChange={e => save('temp', e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 p-3 rounded-xl border-none font-bold text-gray-700 dark:text-white focus:ring-2 focus:ring-pink-200" placeholder="°C" /></div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SettingsView = ({ settings, setSettings }) => (
+            <div className="h-full overflow-y-auto p-6 pt-10 pb-24">
+                <h2 className="text-2xl font-bold text-gray-700 dark:text-white mb-6">設定</h2>
+                <div className="space-y-4">
+                    <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700">
+                        <div className="text-sm text-pink-400 font-bold mb-4">基本資料</div>
+                        <div className="space-y-3">
+                            <input value={settings.name} onChange={e => setSettings({...settings, name: e.target.value})} className="w-full p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl text-gray-600 font-bold border-none" />
+                            <div className="flex gap-3">
+                                <div className="flex-1 bg-pink-50/50 dark:bg-gray-700 rounded-xl p-3"><div className="text-xs text-gray-400">週期</div><input type="number" value={settings.cycleLength} onChange={e => setSettings({...settings, cycleLength: e.target.value})} className="bg-transparent w-full font-bold text-gray-700 dark:text-white" /></div>
+                                <div className="flex-1 bg-pink-50/50 dark:bg-gray-700 rounded-xl p-3"><div className="text-xs text-gray-400">經期</div><input type="number" value={settings.periodLength} onChange={e => setSettings({...settings, periodLength: e.target.value})} className="bg-transparent w-full font-bold text-gray-700 dark:text-white" /></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700">
+                        <div className="text-sm text-pink-400 font-bold mb-4">功能設定</div>
+                        
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-gray-600 dark:text-gray-300 font-bold flex items-center gap-2"><Icon name="Moon" size={18} /> 夜間模式</span>
+                            <button onClick={() => setSettings({...settings, darkMode: !settings.darkMode})} className={`w-12 h-7 rounded-full relative transition-colors ${settings.darkMode ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-gray-600'}`}>
+                                <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${settings.darkMode ? 'left-6' : 'left-1'}`}></div>
+                            </button>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-4 border-t border-gray-100 dark:border-gray-700 pt-4"><span className="text-gray-600 dark:text-gray-300 font-bold flex items-center gap-2"><Icon name="Smile" size={18} /> 暖男陪伴</span><button onClick={() => setSettings({...settings, enableMascot: !settings.enableMascot})} className={`w-12 h-7 rounded-full relative transition-colors ${settings.enableMascot ? 'bg-pink-400' : 'bg-gray-200 dark:bg-gray-600'}`}><div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${settings.enableMascot ? 'left-6' : 'left-1'}`}></div></button></div>
+                        <div className="flex flex-col gap-2 border-t border-gray-100 dark:border-gray-700 pt-4"><span className="text-gray-600 dark:text-gray-300 font-bold flex items-center gap-2"><Icon name="Lock" size={18} /> 隱私鎖</span><input type="text" maxLength={4} placeholder="輸入 4 位數密碼" value={settings.password || ''} onChange={e => setSettings({...settings, password: e.target.value})} className="bg-gray-50 dark:bg-gray-700 dark:text-white w-full p-3 rounded-xl text-center tracking-widest font-bold" /></div>
+                    </div>
+                    <button onClick={() => { localStorage.clear(); location.reload(); }} className="w-full py-4 text-rose-300 font-bold text-sm bg-white dark:bg-gray-800 rounded-3xl border border-rose-100 dark:border-gray-700">重置所有資料</button>
+                </div>
+            </div>
+        );
+
+        const StatsView = ({ logs, settings, formatDate }) => {
+            const logDates = Object.keys(logs).sort();
+            const totalLogs = logDates.length;
+            let periodCount = 0;
+            let cycleDaysSum = 0;
+            let cycleCount = 0;
+            let lastPeriodDate = null;
+
+            const startDates = [];
+            for (let i = 0; i < logDates.length; i++) {
+                const d = logDates[i];
+                if (logs[d].isPeriod) {
+                    periodCount++;
+                    const prevDay = new Date(d);
+                    prevDay.setDate(prevDay.getDate() - 1);
+                    const prevDayStr = formatDate(prevDay);
+                    if (!logs[prevDayStr] || !logs[prevDayStr].isPeriod) {
+                        startDates.push(d);
+                    }
+                }
+            }
+
+            if (startDates.length > 1) {
+                for (let i = 0; i < startDates.length - 1; i++) {
+                    const diff = (new Date(startDates[i+1]) - new Date(startDates[i])) / (1000 * 60 * 60 * 24);
+                    if (diff < 40 && diff > 20) { 
+                        cycleDaysSum += diff;
+                        cycleCount++;
+                    }
+                }
+            }
+
+            const avgCycle = cycleCount > 0 ? Math.round(cycleDaysSum / cycleCount) : settings.cycleLength;
+            const lastPeriod = startDates.length > 0 ? startDates[startDates.length - 1] : "尚未記錄";
+            const nextPeriodPred = lastPeriod !== "尚未記錄" ? formatDate(new Date(new Date(lastPeriod).getTime() + avgCycle * 24 * 60 * 60 * 1000)) : "需更多資料";
+
+            return (
+                <div className="h-full overflow-y-auto p-6 pt-10 pb-24 space-y-6">
+                    <h2 className="text-2xl font-bold text-gray-700 dark:text-white">週期統計</h2>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 flex items-center justify-between">
+                        <div>
+                            <div className="text-sm text-gray-400 font-bold mb-1">預測下次經期</div>
+                            <div className="text-3xl text-pink-500 font-bold">{nextPeriodPred.split('-').slice(1).join('/')}</div>
+                        </div>
+                        <div className="bg-pink-100 dark:bg-gray-700 p-3 rounded-full text-pink-400"><Icon name="Calendar" /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 text-center">
+                            <div className="text-xs text-gray-400 font-bold mb-2">平均週期</div>
+                            <div className="text-2xl text-gray-700 dark:text-white font-bold">{avgCycle} <span className="text-sm text-gray-400">天</span></div>
+                        </div>
+                            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 text-center">
+                            <div className="text-xs text-gray-400 font-bold mb-2">最近一次</div>
+                            <div className="text-lg text-gray-700 dark:text-white font-bold">{lastPeriod !== "尚未記錄" ? lastPeriod.split('-').slice(1).join('/') : "--/--"}</div>
+                        </div>
+                    </div>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700">
+                        <div className="text-sm text-gray-400 font-bold mb-4">記錄概況</div>
+                        <div className="space-y-3">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-600 dark:text-gray-300">總記錄天數</span>
+                                <span className="font-bold text-pink-400">{periodCount} 天</span>
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                                <div className="bg-pink-300 h-2 rounded-full" style={{width: `${Math.min(periodCount, 100)}%`}}></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const NurtureView = ({ bondLevel, isShy, currentPhase, mascotState, handleNurturePoke, mascotMessage, isPoke }) => {
+            const bondText = bondLevel === 0 ? "初識" : bondLevel === 1 ? "朋友" : bondLevel === 2 ? "曖昧" : "戀人";
+            const bondColor = bondLevel === 0 ? "text-gray-400" : bondLevel === 1 ? "text-blue-400" : bondLevel === 2 ? "text-pink-400" : "text-rose-500";
+            const handleImgError = (e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; };
+            
+            // 圖片對應邏輯修正 (新增 lovey_happy)
+            const getNurtureImage = () => {
+                if (isShy) return NORMAL_IMAGES.shy;
+                if (currentPhase === 'period') return NORMAL_IMAGES.cocoa;
+                if (mascotState === 'worry') return NORMAL_IMAGES.worry;
+                // 新增：如果狀態是 love (透過戳戳或排卵期)，顯示 lovey_happy
+                if (mascotState === 'love') return NORMAL_IMAGES.lovey_happy;
+                
+                return NORMAL_IMAGES.normal;
+            };
+
+            return (
+                <div className="h-full flex flex-col items-center justify-between pt-10 pb-24 relative overflow-hidden bg-gradient-to-b from-pink-50/50 to-white dark:from-gray-900 dark:to-gray-800">
+                    <div className="absolute top-20 left-10 text-pink-100 dark:text-gray-700 animate-float"><Icon name="Heart" size={60} /></div>
+                    <div className="absolute top-40 right-10 text-pink-100 dark:text-gray-700 animate-float" style={{animationDelay: '1s'}}><Icon name="Heart" size={40} /></div>
+                    <div className="w-full px-8 z-10">
+                        <div className="flex justify-between items-end mb-2">
+                            <h2 className="text-2xl font-bold text-gray-700 dark:text-white">暖男相處</h2>
+                            <div className={`font-bold ${bondColor} flex items-center gap-1`}><Icon name="Heart" size={16} className="fill-current" /> {bondText}</div>
+                        </div>
+                        <div className="w-full bg-white dark:bg-gray-700 h-3 rounded-full shadow-inner border border-pink-100 dark:border-gray-600">
+                            <div className="bg-gradient-to-r from-pink-300 to-rose-400 h-3 rounded-full transition-all duration-1000" style={{width: `${Math.min(bondLevel * 25, 100)}%`}}></div>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2 text-right">持續記錄經期來提升好感度吧！</p>
+                    </div>
+                    <div className="flex-1 w-full flex items-end justify-center relative z-10 -mb-10 cursor-pointer" onClick={handleNurturePoke}>
+                        <div className={`transition-transform duration-200 ${isPoke ? 'scale-95' : 'hover:scale-105'} relative`}>
+                            {/* 修正：對話框位置偏左 (-translate-x-2/3) */}
+                            <div className="absolute -top-40 left-1/3 -translate-x-1/2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-6 py-4 rounded-3xl shadow-lg border-2 border-pink-100 dark:border-gray-600 w-64 text-center animate-float z-20">
+                                <p className="text-gray-600 dark:text-gray-200 font-bold whitespace-pre-line">{mascotMessage}</p>
+                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 rotate-45 w-4 h-4 bg-white dark:bg-gray-800 border-b-2 border-r-2 border-pink-100 dark:border-gray-600"></div>
+                            </div>
+                            <div className={`w-64 md:w-80 transition-all ${isPoke ? 'animate-wiggle' : ''} ${isShy ? 'animate-shake' : ''}`}>
+                                <img src={getNurtureImage()} className="w-full h-auto drop-shadow-2xl mask-image-gradient-b" alt="Character" onError={handleImgError} />
+                                    <div className="hidden h-64 w-64 items-center justify-center text-9xl">{isShy ? '🥰' : '👦🏻'}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         function WarmBuddyCalendar() {
             const [view, setView] = useState('onboarding');
             const [inputPassword, setInputPassword] = useState('');
@@ -226,7 +566,6 @@
 
             const [settings, setSettings] = useState(() => {
                 const saved = localStorage.getItem('warmBuddy_settings');
-                // 預設開啟 dark mode
                 return saved ? JSON.parse(saved) : { name: '小公主', cycleLength: 28, periodLength: 5, enableMascot: true, notifications: true, hasOnboarded: false, password: null, darkMode: false };
             });
 
@@ -241,7 +580,6 @@
             const [mascotMessage, setMascotMessage] = useState("");
             const [mascotState, setMascotState] = useState("smile");
             
-            // 將狀態提升至父層，確保切換時不會重置
             const [isPoke, setIsPoke] = useState(false);
             const [nurturePokeCount, setNurturePokeCount] = useState(0);
             const [isShy, setIsShy] = useState(false);
@@ -249,7 +587,6 @@
             useEffect(() => { localStorage.setItem('warmBuddy_settings', JSON.stringify(settings)); }, [settings]);
             useEffect(() => { localStorage.setItem('warmBuddy_logs', JSON.stringify(logs)); }, [logs]);
             
-            // Dark Mode Effect
             useEffect(() => {
                 if (settings.darkMode) {
                     document.documentElement.classList.add('dark');
@@ -304,13 +641,9 @@
             useEffect(() => { updateMascotDialogue(); }, [currentPhase, settings.name]);
 
             const updateMascotDialogue = () => {
-                // 邏輯修正：遲到時混合一般對話，並根據選到的對話決定表情
                 let dialogues = [];
-                let isMixedLate = false;
-
                 if (currentPhase === 'late') {
                     dialogues = [...MASCOT_DIALOGUES.late, ...MASCOT_DIALOGUES.default];
-                    isMixedLate = true;
                 } else {
                     dialogues = MASCOT_DIALOGUES[currentPhase] || MASCOT_DIALOGUES.default;
                 }
@@ -319,7 +652,6 @@
                 const selectedText = dialogues[randomIdx];
                 setMascotMessage(getProcessedDialogue(selectedText));
                 
-                // 判斷表情狀態
                 if (currentPhase === 'period' || currentPhase === 'pre_period') {
                     setMascotState('worry');
                 } else if (currentPhase === 'late') {
@@ -375,7 +707,6 @@
                     const randomIdx = Math.floor(Math.random() * pokeDialogues.length);
                     setMascotMessage(getProcessedDialogue(pokeDialogues[randomIdx]));
                     
-                    // 戳戳時如果不是特殊狀態，隨機顯示 lovey_happy
                     if (!['period', 'late', 'pre_period'].includes(currentPhase)) {
                          setMascotState(Math.random() > 0.5 ? 'love' : 'smile');
                     }
@@ -389,332 +720,29 @@
                 });
             };
 
-            // --- Render Functions ---
-
-            const renderLockScreen = () => (
-                <div className="flex flex-col items-center justify-center h-full bg-pink-50/50 dark:bg-gray-900 p-6 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-full bg-[url('Love_Happy.png')] bg-cover opacity-10 blur-sm z-0"></div>
-                    <div className="bg-white/80 dark:bg-gray-800/90 p-8 rounded-3xl shadow-xl z-10 text-center backdrop-blur-md border border-pink-100 dark:border-gray-700">
-                        <div className="bg-pink-100 dark:bg-gray-700 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                            <Icon name="Lock" className="text-pink-400 dark:text-pink-300" size={32} />
-                        </div>
-                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2">歡迎回來，{settings.name}</h2>
-                        <input type="password" value={inputPassword} onChange={(e) => setInputPassword(e.target.value)} placeholder="請輸入密碼" className="bg-pink-50 dark:bg-gray-700 px-4 py-3 rounded-2xl border-2 border-pink-100 dark:border-gray-600 text-center text-lg mb-4 w-full focus:outline-none focus:border-pink-300 transition-colors dark:text-white" maxLength={4} />
-                        <button onClick={() => { if (inputPassword === settings.password) { setIsLocked(false); sessionStorage.setItem('unlocked', 'true'); setView('calendar'); } else { alert("密碼錯誤 > <"); } }} className="bg-gradient-to-r from-pink-400 to-pink-500 text-white w-full py-3 rounded-2xl font-bold shadow-lg shadow-pink-200 dark:shadow-none active:scale-95 transition-transform">解鎖</button>
-                    </div>
-                </div>
-            );
-
-            const renderOnboarding = () => (
-                <div className="flex flex-col items-center justify-center h-full p-6 relative dark:bg-gray-900">
-                    <div className="absolute top-10 right-10 text-pink-200 opacity-50"><Icon name="Heart" size={40} /></div>
-                    <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl w-full max-w-sm border-2 border-pink-50 dark:border-gray-700 relative z-10">
-                        <div className="text-center mb-8"><h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">暖男日曆</h1><p className="text-pink-400 text-sm">溫柔守護妳的每一天</p></div>
-                        <div className="space-y-5">
-                            <div><label className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1">怎麼稱呼妳呢？</label><input value={settings.name} onChange={e => setSettings({...settings, name: e.target.value})} className="w-full mt-1 p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl border border-pink-100 dark:border-gray-600 focus:ring-2 focus:ring-pink-200 focus:outline-none" placeholder="例如：小美" /></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1">平均週期</label><input type="number" value={settings.cycleLength} onChange={e => setSettings({...settings, cycleLength: e.target.value})} className="w-full mt-1 p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl border border-pink-100 dark:border-gray-600 text-center" /></div>
-                                <div><label className="text-gray-500 dark:text-gray-400 text-xs font-bold ml-1">經期天數</label><input type="number" value={settings.periodLength} onChange={e => setSettings({...settings, periodLength: e.target.value})} className="w-full mt-1 p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl border border-pink-100 dark:border-gray-600 text-center" /></div>
-                            </div>
-                        </div>
-                        <button onClick={() => { 
-                            if(settings.name && settings.cycleLength && settings.periodLength) {
-                                setSettings({...settings, hasOnboarded: true}); setView('calendar'); 
-                            } else {
-                                alert("請先填寫資料喔！");
-                            }
-                        }} className="w-full mt-8 bg-gradient-to-r from-pink-400 to-rose-400 text-white py-4 rounded-2xl font-bold shadow-lg shadow-pink-200 dark:shadow-none hover:shadow-pink-300 transition-all active:scale-95">開始使用</button>
-                    </div>
-                </div>
-            );
-
-            const renderMascot = () => {
-                if (!settings.enableMascot) return null;
-                const handleImgError = (e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; };
-                return (
-                    <div className="fixed bottom-24 left-4 z-40 flex items-end animate-pop">
-                        <div className="relative group cursor-pointer" onClick={handleCalendarPoke}>
-                            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-white dark:border-gray-700 shadow-[0_4px_20px_rgba(255,182,193,0.6)] bg-pink-100 relative z-10 transition-transform transform active:scale-95">
-                                <img src={Q_IMAGES[mascotState]} alt="Mascot" className="w-full h-full object-cover" onError={handleImgError} />
-                                <div className="absolute inset-0 hidden items-center justify-center bg-pink-100 text-4xl">{mascotState === 'smile' ? '👦🏻' : mascotState === 'worry' ? '😟' : mascotState === 'love' ? '🥰' : '😉'}</div>
-                            </div>
-                            <div className="absolute left-16 bottom-16 bg-white dark:bg-gray-800 px-4 py-3 rounded-2xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-700 w-48 z-20 animate-float origin-bottom-left">
-                                <p className="text-gray-600 dark:text-gray-200 text-sm font-medium leading-relaxed whitespace-pre-line">{mascotMessage}</p>
-                                <Icon name="Heart" size={12} className="text-pink-400 absolute -top-2 -right-2 fill-current animate-bounce" />
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            const renderCalendarView = () => {
-                const year = currentDate.getFullYear();
-                const month = currentDate.getMonth();
-                const daysInMonth = getMonthDays(year, month);
-                const firstDayObj = new Date(year, month, 1);
-                const startPadding = firstDayObj.getDay(); 
-
-                const getDayStatus = (dateStr) => {
-                    if (logs[dateStr]?.isPeriod) return 'period-active';
-                    let lastPeriodStart = null;
-                    const sortedDates = Object.keys(logs).sort().reverse();
-                    const lastPeriodDate = sortedDates.find(d => logs[d].isPeriod);
-                    if (lastPeriodDate) {
-                        const lastDate = new Date(lastPeriodDate);
-                        const cycleLen = parseInt(settings.cycleLength);
-                        const diffDays = Math.floor((new Date(dateStr) - lastDate) / (1000 * 60 * 60 * 24));
-                        if (new Date(dateStr) < new Date() && !logs[dateStr]?.isPeriod) return 'none';
-                        const cycleDay = diffDays % cycleLen;
-                        if (cycleDay >= 0 && cycleDay < settings.periodLength) {
-                            if (new Date(dateStr) < new Date()) return 'none';
-                            return 'period-predicted';
-                        }
-                        if (cycleDay === cycleLen - 14) return 'ovulation';
-                    }
-                    return 'none';
-                };
-
-                return (
-                    <div className="flex flex-col h-full relative">
-                        <div className="flex items-center justify-between px-6 pt-10 pb-4 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10">
-                            <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 bg-white dark:bg-gray-800 rounded-full text-pink-400 shadow-sm active:scale-95"><Icon name="ChevronLeft" /></button>
-                            <h2 className="text-2xl font-bold text-gray-700 dark:text-gray-100 tracking-widest">{year}.{String(month + 1).padStart(2, '0')}</h2>
-                            <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 bg-white dark:bg-gray-800 rounded-full text-pink-400 shadow-sm active:scale-95"><Icon name="ChevronRight" /></button>
-                        </div>
-
-                        <div className="grid grid-cols-7 text-center py-2 text-pink-300 font-bold text-xs bg-white/30 dark:bg-gray-800/30">
-                            <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
-                        </div>
-
-                        <div className="grid grid-cols-7 gap-3 p-4 overflow-y-auto no-scrollbar pb-64">
-                            {Array(startPadding).fill(null).map((_, i) => <div key={`pad-${i}`} />)}
-                            
-                            {daysInMonth.map(dateStr => {
-                                const status = getDayStatus(dateStr);
-                                const isSelected = dateStr === selectedDate;
-                                const isToday = dateStr === formatDate(new Date());
-                                const logExists = logs[dateStr];
-                                let bgClass = "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 shadow-sm border border-transparent";
-                                if (status === 'period-active') bgClass = "bg-rose-400 text-white shadow-rose-200 shadow-md border-rose-400";
-                                else if (status === 'period-predicted') bgClass = "bg-pink-50 dark:bg-gray-700 text-pink-400 border-dashed border-pink-200 dark:border-gray-600 border-2";
-                                else if (status === 'ovulation') bgClass = "bg-purple-50 dark:bg-gray-700 text-purple-500 border-purple-200 dark:border-purple-900 border";
-                                if (isSelected) bgClass += " ring-2 ring-pink-400 ring-offset-2 ring-offset-pink-50 dark:ring-offset-gray-900 scale-105 z-10";
-                                return (
-                                    <div key={dateStr} onClick={() => setSelectedDate(dateStr)} className={`aspect-square rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all relative ${bgClass}`}>
-                                        <span className={`text-sm font-bold ${isToday ? 'underline decoration-2 underline-offset-2' : ''}`}>{parseInt(dateStr.split('-')[2])}</span>
-                                        <div className="flex gap-1 mt-1 h-1.5">{logExists?.symptoms?.length > 0 && <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>}{logExists?.temp && <div className="w-1.5 h-1.5 rounded-full bg-blue-300"></div>}</div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        
-                        <div className="absolute bottom-24 right-4 z-30 animate-pop flex flex-col gap-2 w-28">
-                            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg border border-white/50 dark:border-gray-700 text-center">
-                                <div className="text-[10px] text-gray-400 font-bold mb-0.5">SELECTED</div>
-                                <div className="text-2xl font-black text-gray-700 dark:text-white font-mono leading-none">{selectedDate.split('-')[2]}</div>
-                                <div className="text-xs font-bold text-gray-400">{selectedDate.split('-')[1]}月</div>
-                            </div>
-
-                            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-2 rounded-2xl shadow-lg border border-white/50 dark:border-gray-700 flex flex-col gap-2">
-                                <button onClick={() => togglePeriod(selectedDate)} className={`w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-1 transition-all active:scale-90 ${logs[selectedDate]?.isPeriod ? 'bg-rose-400 text-white shadow-md' : 'bg-pink-50 dark:bg-gray-700 text-pink-400'}`}>
-                                    <Icon name="Droplet" size={24} className={logs[selectedDate]?.isPeriod ? 'fill-white' : 'fill-pink-400'} />
-                                    <span className="text-xs font-bold">{logs[selectedDate]?.isPeriod ? '結束' : '來了'}</span>
-                                </button>
-                                <button onClick={() => setShowLogModal(true)} className="w-full py-2 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-xs font-bold active:scale-95 hover:bg-gray-100 dark:hover:bg-gray-600">
-                                    詳細
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            const renderLogModal = () => {
-                if (!showLogModal) return null;
-                const currentLog = logs[selectedDate] || { symptoms: [], flow: '', temp: '' };
-                const symptomsList = ['😭 經痛', '😫 頭痛', '😮‍💨 腰痠', '😡 易怒', '😣 疲憊', '🍫 貪吃', '😞 憂鬱', '🎈 胸漲'];
-                const save = (key, val) => { setLogs(prev => ({ ...prev, [selectedDate]: { ...prev[selectedDate], [key]: val } })); };
-                const toggleSym = (s) => { const list = currentLog.symptoms || []; save('symptoms', list.includes(s) ? list.filter(i => i !== s) : [...list, s]); };
-                return (
-                    <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-end justify-center" onClick={(e) => e.target === e.currentTarget && setShowLogModal(false)}>
-                        <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-t-[2rem] p-6 pb-12 animate-float shadow-2xl">
-                            <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-6"></div>
-                            <h3 className="text-lg font-bold text-gray-700 dark:text-white mb-6 flex items-center gap-2"><div className="w-2 h-6 bg-pink-400 rounded-full"></div>詳細記錄</h3>
-                            <div className="space-y-6">
-                                <div><label className="text-sm font-bold text-gray-400 mb-2 block">經血量</label><div className="flex gap-3">{['少', '中', '多'].map(l => (<button key={l} onClick={() => save('flow', l)} className={`flex-1 py-3 rounded-2xl text-sm font-bold transition-all ${currentLog.flow === l ? 'bg-rose-400 text-white shadow-md scale-105' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>{l}</button>))}</div></div>
-                                <div><label className="text-sm font-bold text-gray-400 mb-2 block">症狀</label><div className="grid grid-cols-4 gap-2">{symptomsList.map(s => (<button key={s} onClick={() => toggleSym(s)} className={`py-2 rounded-xl text-xs font-bold transition-all ${currentLog.symptoms?.includes(s) ? 'bg-pink-100 text-pink-600 border border-pink-200' : 'bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 text-gray-500 dark:text-gray-300'}`}>{s.split(' ')[1]}</button>))}</div></div>
-                                <div><label className="text-sm font-bold text-gray-400 mb-2 block">體溫</label><input type="number" value={currentLog.temp || ''} onChange={e => save('temp', e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 p-3 rounded-xl border-none font-bold text-gray-700 dark:text-white focus:ring-2 focus:ring-pink-200" placeholder="°C" /></div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            const renderSettingsView = () => (
-                <div className="h-full overflow-y-auto p-6 pt-10 pb-24">
-                    <h2 className="text-2xl font-bold text-gray-700 dark:text-white mb-6">設定</h2>
-                    <div className="space-y-4">
-                        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700">
-                            <div className="text-sm text-pink-400 font-bold mb-4">基本資料</div>
-                            <div className="space-y-3">
-                                <input value={settings.name} onChange={e => setSettings({...settings, name: e.target.value})} className="w-full p-3 bg-pink-50/50 dark:bg-gray-700 dark:text-white rounded-xl text-gray-600 font-bold border-none" />
-                                <div className="flex gap-3">
-                                    <div className="flex-1 bg-pink-50/50 dark:bg-gray-700 rounded-xl p-3"><div className="text-xs text-gray-400">週期</div><input type="number" value={settings.cycleLength} onChange={e => setSettings({...settings, cycleLength: e.target.value})} className="bg-transparent w-full font-bold text-gray-700 dark:text-white" /></div>
-                                    <div className="flex-1 bg-pink-50/50 dark:bg-gray-700 rounded-xl p-3"><div className="text-xs text-gray-400">經期</div><input type="number" value={settings.periodLength} onChange={e => setSettings({...settings, periodLength: e.target.value})} className="bg-transparent w-full font-bold text-gray-700 dark:text-white" /></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700">
-                            <div className="text-sm text-pink-400 font-bold mb-4">功能設定</div>
-                            
-                            {/* 深色模式開關 */}
-                            <div className="flex justify-between items-center mb-4">
-                                <span className="text-gray-600 dark:text-gray-300 font-bold flex items-center gap-2"><Icon name="Moon" size={18} /> 夜間模式</span>
-                                <button onClick={() => setSettings({...settings, darkMode: !settings.darkMode})} className={`w-12 h-7 rounded-full relative transition-colors ${settings.darkMode ? 'bg-indigo-500' : 'bg-gray-200 dark:bg-gray-600'}`}>
-                                    <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${settings.darkMode ? 'left-6' : 'left-1'}`}></div>
-                                </button>
-                            </div>
-
-                            <div className="flex justify-between items-center mb-4 border-t border-gray-100 dark:border-gray-700 pt-4"><span className="text-gray-600 dark:text-gray-300 font-bold flex items-center gap-2"><Icon name="Smile" size={18} /> 暖男陪伴</span><button onClick={() => setSettings({...settings, enableMascot: !settings.enableMascot})} className={`w-12 h-7 rounded-full relative transition-colors ${settings.enableMascot ? 'bg-pink-400' : 'bg-gray-200 dark:bg-gray-600'}`}><div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${settings.enableMascot ? 'left-6' : 'left-1'}`}></div></button></div>
-                            <div className="flex flex-col gap-2 border-t border-gray-100 dark:border-gray-700 pt-4"><span className="text-gray-600 dark:text-gray-300 font-bold flex items-center gap-2"><Icon name="Lock" size={18} /> 隱私鎖</span><input type="text" maxLength={4} placeholder="輸入 4 位數密碼" value={settings.password || ''} onChange={e => setSettings({...settings, password: e.target.value})} className="bg-gray-50 dark:bg-gray-700 dark:text-white w-full p-3 rounded-xl text-center tracking-widest font-bold" /></div>
-                        </div>
-                        <button onClick={() => { localStorage.clear(); location.reload(); }} className="w-full py-4 text-rose-300 font-bold text-sm bg-white dark:bg-gray-800 rounded-3xl border border-rose-100 dark:border-gray-700">重置所有資料</button>
-                    </div>
-                </div>
-            );
-
-            const renderStatsView = () => {
-                const logDates = Object.keys(logs).sort();
-                const totalLogs = logDates.length;
-                let periodCount = 0;
-                let cycleDaysSum = 0;
-                let cycleCount = 0;
-                let lastPeriodDate = null;
-
-                const startDates = [];
-                for (let i = 0; i < logDates.length; i++) {
-                    const d = logDates[i];
-                    if (logs[d].isPeriod) {
-                        periodCount++;
-                        const prevDay = new Date(d);
-                        prevDay.setDate(prevDay.getDate() - 1);
-                        const prevDayStr = formatDate(prevDay);
-                        if (!logs[prevDayStr] || !logs[prevDayStr].isPeriod) {
-                            startDates.push(d);
-                        }
-                    }
+            const handleUnlock = () => {
+                if (inputPassword === settings.password) {
+                    setIsLocked(false);
+                    sessionStorage.setItem('unlocked', 'true');
+                    setView('calendar');
+                } else {
+                    alert("密碼錯誤 > <");
                 }
-
-                if (startDates.length > 1) {
-                    for (let i = 0; i < startDates.length - 1; i++) {
-                        const diff = (new Date(startDates[i+1]) - new Date(startDates[i])) / (1000 * 60 * 60 * 24);
-                        if (diff < 40 && diff > 20) { 
-                            cycleDaysSum += diff;
-                            cycleCount++;
-                        }
-                    }
-                }
-
-                const avgCycle = cycleCount > 0 ? Math.round(cycleDaysSum / cycleCount) : settings.cycleLength;
-                const lastPeriod = startDates.length > 0 ? startDates[startDates.length - 1] : "尚未記錄";
-                const nextPeriodPred = lastPeriod !== "尚未記錄" ? formatDate(new Date(new Date(lastPeriod).getTime() + avgCycle * 24 * 60 * 60 * 1000)) : "需更多資料";
-
-                return (
-                    <div className="h-full overflow-y-auto p-6 pt-10 pb-24 space-y-6">
-                        <h2 className="text-2xl font-bold text-gray-700 dark:text-white">週期統計</h2>
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 flex items-center justify-between">
-                            <div>
-                                <div className="text-sm text-gray-400 font-bold mb-1">預測下次經期</div>
-                                <div className="text-3xl text-pink-500 font-bold">{nextPeriodPred.split('-').slice(1).join('/')}</div>
-                            </div>
-                            <div className="bg-pink-100 dark:bg-gray-700 p-3 rounded-full text-pink-400"><Icon name="Calendar" /></div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 text-center">
-                                <div className="text-xs text-gray-400 font-bold mb-2">平均週期</div>
-                                <div className="text-2xl text-gray-700 dark:text-white font-bold">{avgCycle} <span className="text-sm text-gray-400">天</span></div>
-                            </div>
-                             <div className="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 text-center">
-                                <div className="text-xs text-gray-400 font-bold mb-2">最近一次</div>
-                                <div className="text-lg text-gray-700 dark:text-white font-bold">{lastPeriod !== "尚未記錄" ? lastPeriod.split('-').slice(1).join('/') : "--/--"}</div>
-                            </div>
-                        </div>
-                         <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700">
-                            <div className="text-sm text-gray-400 font-bold mb-4">記錄概況</div>
-                            <div className="space-y-3">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600 dark:text-gray-300">總記錄天數</span>
-                                    <span className="font-bold text-pink-400">{periodCount} 天</span>
-                                </div>
-                                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-                                    <div className="bg-pink-300 h-2 rounded-full" style={{width: `${Math.min(periodCount, 100)}%`}}></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            const renderNurtureView = () => {
-                const bondText = bondLevel === 0 ? "初識" : bondLevel === 1 ? "朋友" : bondLevel === 2 ? "曖昧" : "戀人";
-                const bondColor = bondLevel === 0 ? "text-gray-400" : bondLevel === 1 ? "text-blue-400" : bondLevel === 2 ? "text-pink-400" : "text-rose-500";
-                const handleImgError = (e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; };
-                
-                // 圖片對應邏輯修正 (新增 lovey_happy)
-                const getNurtureImage = () => {
-                    if (isShy) return NORMAL_IMAGES.shy;
-                    if (currentPhase === 'period') return NORMAL_IMAGES.cocoa;
-                    if (mascotState === 'worry') return NORMAL_IMAGES.worry;
-                    // 新增：如果狀態是 love (透過戳戳或排卵期)，顯示 lovey_happy
-                    if (mascotState === 'love') return NORMAL_IMAGES.lovey_happy;
-                    
-                    return NORMAL_IMAGES.normal;
-                };
-
-                return (
-                    <div className="h-full flex flex-col items-center justify-between pt-10 pb-24 relative overflow-hidden bg-gradient-to-b from-pink-50/50 to-white dark:from-gray-900 dark:to-gray-800">
-                        <div className="absolute top-20 left-10 text-pink-100 dark:text-gray-700 animate-float"><Icon name="Heart" size={60} /></div>
-                        <div className="absolute top-40 right-10 text-pink-100 dark:text-gray-700 animate-float" style={{animationDelay: '1s'}}><Icon name="Heart" size={40} /></div>
-                        <div className="w-full px-8 z-10">
-                            <div className="flex justify-between items-end mb-2">
-                                <h2 className="text-2xl font-bold text-gray-700 dark:text-white">暖男相處</h2>
-                                <div className={`font-bold ${bondColor} flex items-center gap-1`}><Icon name="Heart" size={16} className="fill-current" /> {bondText}</div>
-                            </div>
-                            <div className="w-full bg-white dark:bg-gray-700 h-3 rounded-full shadow-inner border border-pink-100 dark:border-gray-600">
-                                <div className="bg-gradient-to-r from-pink-300 to-rose-400 h-3 rounded-full transition-all duration-1000" style={{width: `${Math.min(Object.keys(logs).length * 2, 100)}%`}}></div>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2 text-right">持續記錄經期來提升好感度吧！</p>
-                        </div>
-                        <div className="flex-1 w-full flex items-end justify-center relative z-10 -mb-10 cursor-pointer" onClick={handleNurturePoke}>
-                            <div className={`transition-transform duration-200 ${isPoke ? 'scale-95' : 'hover:scale-105'} relative`}>
-                                {/* 修正：對話框位置偏左 (-translate-x-2/3) */}
-                                <div className="absolute -top-40 left-1/3 -translate-x-1/2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-6 py-4 rounded-3xl shadow-lg border-2 border-pink-100 dark:border-gray-600 w-64 text-center animate-float z-20">
-                                    <p className="text-gray-600 dark:text-gray-200 font-bold whitespace-pre-line">{mascotMessage}</p>
-                                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 rotate-45 w-4 h-4 bg-white dark:bg-gray-800 border-b-2 border-r-2 border-pink-100 dark:border-gray-600"></div>
-                                </div>
-                                <div className={`w-64 md:w-80 transition-all ${isPoke ? 'animate-wiggle' : ''} ${isShy ? 'animate-shake' : ''}`}>
-                                    <img src={getNurtureImage()} className="w-full h-auto drop-shadow-2xl mask-image-gradient-b" alt="Character" onError={handleImgError} />
-                                     <div className="hidden h-64 w-64 items-center justify-center text-9xl">{isShy ? '🥰' : '👦🏻'}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
             };
 
-            if (view === 'lock') return renderLockScreen();
-            if (view === 'onboarding') return renderOnboarding();
+            if (view === 'lock') return <LockScreen settings={settings} inputPassword={inputPassword} setInputPassword={setInputPassword} handleUnlock={handleUnlock} />;
+            if (view === 'onboarding') return <Onboarding settings={settings} setSettings={setSettings} setView={setView} />;
 
             return (
                 <div className="h-full w-full flex flex-col relative font-sans">
                     <div className="flex-1 overflow-hidden relative z-0">
-                        {view === 'calendar' && renderCalendarView()}
-                        {view === 'settings' && renderSettingsView()}
-                        {view === 'stats' && renderStatsView()}
-                        {view === 'nurture' && renderNurtureView()}
+                        {view === 'calendar' && <CalendarView currentDate={currentDate} setCurrentDate={setCurrentDate} selectedDate={selectedDate} setSelectedDate={setSelectedDate} logs={logs} settings={settings} togglePeriod={togglePeriod} setShowLogModal={setShowLogModal} />}
+                        {view === 'settings' && <SettingsView settings={settings} setSettings={setSettings} />}
+                        {view === 'stats' && <StatsView logs={logs} settings={settings} formatDate={formatDate} />}
+                        {view === 'nurture' && <NurtureView bondLevel={bondLevel} isShy={isShy} currentPhase={currentPhase} mascotState={mascotState} handleNurturePoke={handleNurturePoke} mascotMessage={mascotMessage} isPoke={isPoke} />}
                     </div>
-                    {view === 'calendar' && renderMascot()}
-                    {renderLogModal()}
+                    {view === 'calendar' && <Mascot settings={settings} mascotState={mascotState} mascotMessage={mascotMessage} handleCalendarPoke={handleCalendarPoke} />}
+                    <LogModal showLogModal={showLogModal} setShowLogModal={setShowLogModal} logs={logs} setLogs={setLogs} selectedDate={selectedDate} />
                     <div className="h-20 bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 flex items-center justify-around px-2 pb-6 z-50 shadow-[0_-5px_15px_rgba(0,0,0,0.02)]">
                         {[{ id: 'calendar', icon: 'Calendar', label: '日曆' }, { id: 'stats', icon: 'BarChart2', label: '統計' }, { id: 'nurture', icon: 'Heart', label: '相處' }, { id: 'settings', icon: 'Settings', label: '設定' }].map(item => (<button key={item.id} onClick={() => setView(item.id)} className="w-16 flex flex-col items-center gap-1 group"><div className={`p-2 rounded-2xl transition-all ${view === item.id ? 'bg-pink-100 text-pink-500 dark:bg-gray-800 dark:text-pink-300 -translate-y-2 shadow-sm' : 'text-gray-300 group-hover:text-gray-400'}`}><Icon name={item.icon} size={24} className={view === item.id ? 'fill-pink-200 dark:fill-pink-900' : ''} /></div><span className={`text-[10px] font-bold ${view === item.id ? 'text-pink-500 dark:text-pink-300' : 'text-gray-300'}`}>{item.label}</span></button>))}
                     </div>
