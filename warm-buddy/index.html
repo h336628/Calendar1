@@ -165,7 +165,6 @@
         };
 
         // --- Components ---
-        // (LockScreen, Onboarding, Mascot, CalendarView, LogModal, SettingsView, StatsView 不變，省略以節省長度，請務必包含完整程式碼)
 
         const LockScreen = ({ settings, inputPassword, setInputPassword, handleUnlock }) => (
             <div className="flex flex-col items-center justify-center h-full bg-pink-50/50 dark:bg-gray-900 p-6 relative overflow-hidden">
@@ -471,6 +470,58 @@
             );
         };
 
+        const CycleHistoryModal = ({ show, onClose, logs, settings, formatDate }) => {
+            if (!show) return null;
+            
+            const logDates = Object.keys(logs).sort();
+            const cycles = [];
+            const startDates = [];
+
+            for (let i = 0; i < logDates.length; i++) {
+                const d = logDates[i];
+                if (logs[d].isPeriod) {
+                    const prevDay = new Date(d);
+                    prevDay.setDate(prevDay.getDate() - 1);
+                    const prevDayStr = formatDate(prevDay);
+                    if (!logs[prevDayStr] || !logs[prevDayStr].isPeriod) {
+                        startDates.push(d);
+                    }
+                }
+            }
+
+            for (let i = startDates.length - 1; i > 0; i--) {
+                const currentStart = new Date(startDates[i]);
+                const prevStart = new Date(startDates[i-1]);
+                const diffTime = Math.abs(currentStart - prevStart);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                cycles.push({
+                    date: startDates[i],
+                    length: diffDays
+                });
+            }
+
+            return (
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[1002] flex items-center justify-center" onClick={onClose}>
+                    <div className="bg-white dark:bg-gray-800 w-4/5 max-w-sm rounded-2xl p-6 shadow-2xl animate-pop" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-700 dark:text-white">近期週期紀錄</h3>
+                            <button onClick={onClose}><Icon name="X" size={20} className="text-gray-400" /></button>
+                        </div>
+                        <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
+                            {cycles.length > 0 ? cycles.map((cycle, idx) => (
+                                <div key={idx} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                                    <span className="text-gray-600 dark:text-gray-300 font-bold">{cycle.date.split('-').slice(1).join('/')} 開始</span>
+                                    <span className="text-pink-500 font-bold">{cycle.length} 天</span>
+                                </div>
+                            )) : (
+                                <p className="text-gray-400 text-center text-sm py-4">還沒有足夠的紀錄喔！</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const StatsView = ({ logs, settings, formatDate }) => {
             const [showCycleHistory, setShowCycleHistory] = useState(false);
             const logDates = Object.keys(logs).sort();
@@ -512,6 +563,7 @@
                 <div className="h-full overflow-y-auto p-6 pt-10 pb-24 space-y-6">
                     <h2 className="text-2xl font-bold text-gray-700 dark:text-white">週期統計</h2>
                     
+                    {/* --- 新增：阿暖的小檔案卡片 --- */}
                     <div className="bg-gradient-to-br from-pink-50 to-white dark:from-gray-800 dark:to-gray-700 p-5 rounded-3xl shadow-sm border border-pink-100 dark:border-gray-600 flex gap-4 items-center">
                         <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white dark:border-gray-600 shadow-md flex-shrink-0 bg-pink-100">
                             <img src={Q_IMAGES.smile} className="w-full h-full object-cover" alt="阿暖" />
@@ -532,6 +584,7 @@
                         </div>
                     </div>
 
+                    {/* 原有統計卡片 */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 flex items-center justify-between">
                         <div>
                             <div className="text-sm text-gray-400 font-bold mb-1">預測下次經期</div>
@@ -572,10 +625,10 @@
         const ChatHistoryModal = ({ show, onClose, history }) => {
             if (!show) return null;
             return (
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-end justify-center" onClick={onClose}>
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[1001] flex items-end justify-center" onClick={onClose}>
                     <div className="bg-white dark:bg-gray-800 w-full h-3/4 max-w-md rounded-t-[2rem] p-6 pb-12 animate-float shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-4">
-                             <h3 className="text-lg font-bold text-gray-700 dark:text-white flex items-center gap-2"><div className="w-2 h-6 bg-pink-400 rounded-full"></div>回憶紀錄</h3>
+                             <h3 className="text-lg font-bold text-gray-700 dark:text-white flex items-center gap-2"><div className="w-2 h-6 bg-pink-400 rounded-full"></div>回憶紀錄 (近3天)</h3>
                              <button onClick={onClose}><Icon name="ChevronDown" size={24} className="text-gray-400" /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
@@ -600,6 +653,7 @@
         const NurtureView = ({ bondLevel, isShy, currentPhase, mascotState, handleNurturePoke, mascotMessage, isPoke, settings, setMascotMessage, setMascotState, chatHistory, setChatHistory }) => {
             const [inputText, setInputText] = useState('');
             const [isTyping, setIsTyping] = useState(false);
+            const [inputFocus, setInputFocus] = useState(false);
             const [apiError, setApiError] = useState(null);
             const [showHistory, setShowHistory] = useState(false);
             
@@ -654,11 +708,9 @@
                     };
 
                     let data;
-                    // 優先嘗試 1.5 Flash
                     try {
                         data = await tryFetch('gemini-1.5-flash');
                     } catch (e) {
-                        // 失敗則嘗試自動輪詢其他模型
                         const fallbackModels = ['gemini-1.5-flash-latest', 'gemini-flash-latest', 'gemini-1.5-flash-001', 'gemini-1.5-flash-002', 'gemini-1.5-pro', 'gemini-pro'];
                         let success = false;
                         for (const model of fallbackModels) {
@@ -670,7 +722,7 @@
                                 continue;
                             }
                         }
-                        if (!success) throw e; // 如果全部失敗，拋出最後一個錯誤
+                        if (!success) throw e;
                     }
                     
                     if (data.candidates && data.candidates[0].content) {
@@ -727,7 +779,7 @@
                     <div className="flex-1 w-full flex items-end justify-center relative z-10 -mb-10">
                         <div className={`transition-transform duration-200 ${isPoke ? 'scale-95' : 'hover:scale-105'} relative`}>
                             
-                            {/* 對話框 (靠左 & 自動換行) - 下移一點 (top-32) */}
+                            {/* 對話框 - 位置下移, 靠左, 自動換行 */}
                             <div className="absolute -top-32 right-[45%] transform translate-x-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-3 rounded-3xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-600 w-max max-w-[140px] text-left animate-float z-20">
                                 {isTyping ? (
                                     <div className="flex justify-center space-x-1 h-6 items-center">
@@ -752,14 +804,16 @@
                         </div>
                     </div>
 
-                    {/* Chat Input Bar - 固定在底部 (導覽列上方) */}
-                    <div className={`fixed left-0 w-full bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 p-3 z-[999] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] bottom-16`}>
+                    {/* Chat Input Bar - 固定在底部導覽列上方 (bottom-16) */}
+                    <div className={`fixed left-0 w-full bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 p-3 z-[999] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] ${inputFocus ? 'bottom-0' : 'bottom-16'}`}>
                         <div className="flex gap-2 w-full max-w-md mx-auto px-2">
                             <input 
                                 type="text" 
                                 value={inputText}
                                 disabled={!hasApiKey}
                                 onChange={(e) => setInputText(e.target.value)}
+                                onFocus={() => setInputFocus(true)}
+                                onBlur={() => setInputFocus(false)}
                                 placeholder={hasApiKey ? "想跟阿暖說什麼？" : "請先設定 API Key 才能聊天喔"}
                                 className={`flex-1 bg-gray-100 dark:bg-gray-800 dark:text-white rounded-full px-4 py-4 text-base focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all ${!hasApiKey && 'opacity-50 cursor-not-allowed'}`}
                                 onKeyPress={(e) => e.key === 'Enter' && hasApiKey && callGemini(inputText)}
@@ -782,16 +836,17 @@
             const [view, setView] = useState('onboarding');
             const [inputPassword, setInputPassword] = useState('');
             const [isLocked, setIsLocked] = useState(false);
+
             const [settings, setSettings] = useState(() => {
                 const saved = localStorage.getItem('warmBuddy_settings');
                 return saved ? JSON.parse(saved) : { name: '小公主', cycleLength: 28, periodLength: 5, enableMascot: true, notifications: true, hasOnboarded: false, password: null, darkMode: false, startDate: new Date().toISOString() };
             });
+
             const [logs, setLogs] = useState(() => {
                 const saved = localStorage.getItem('warmBuddy_logs');
                 return saved ? JSON.parse(saved) : {};
             });
             
-            // Chat history state
             const [chatHistory, setChatHistory] = useState(() => {
                 const saved = localStorage.getItem('warmBuddy_chat');
                 return saved ? JSON.parse(saved) : [];
@@ -810,25 +865,17 @@
             useEffect(() => { localStorage.setItem('warmBuddy_settings', JSON.stringify(settings)); }, [settings]);
             useEffect(() => { localStorage.setItem('warmBuddy_logs', JSON.stringify(logs)); }, [logs]);
             
-            // Save chat history and prune old messages on mount
             useEffect(() => {
                 const now = new Date();
                 const threeDaysAgo = now.getTime() - (3 * 24 * 60 * 60 * 1000);
-                // Filter logic: keep messages newer than 3 days
                 const filteredHistory = chatHistory.filter(msg => new Date(msg.timestamp).getTime() > threeDaysAgo);
-                
-                if (filteredHistory.length !== chatHistory.length) {
-                    setChatHistory(filteredHistory);
-                }
+                if (filteredHistory.length !== chatHistory.length) setChatHistory(filteredHistory);
                 localStorage.setItem('warmBuddy_chat', JSON.stringify(filteredHistory));
             }, [chatHistory]);
             
             useEffect(() => {
-                if (settings.darkMode) {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
+                if (settings.darkMode) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
             }, [settings.darkMode]);
 
             useEffect(() => {
@@ -870,48 +917,32 @@
                 return 'default';
             }, [logs, settings]);
 
-            const getProcessedDialogue = (text) => {
-                return text.replace(/{{name}}/g, settings.name);
-            };
+            const getProcessedDialogue = (text) => text.replace(/{{name}}/g, settings.name);
 
             useEffect(() => { updateMascotDialogue(); }, [currentPhase, settings.name]);
 
             const updateMascotDialogue = () => {
                 let dialogues = [];
-                if (currentPhase === 'late') {
-                    dialogues = [...MASCOT_DIALOGUES.late, ...MASCOT_DIALOGUES.default];
-                } else {
-                    dialogues = MASCOT_DIALOGUES[currentPhase] || MASCOT_DIALOGUES.default;
-                }
-
+                if (currentPhase === 'late') dialogues = [...MASCOT_DIALOGUES.late, ...MASCOT_DIALOGUES.default];
+                else dialogues = MASCOT_DIALOGUES[currentPhase] || MASCOT_DIALOGUES.default;
                 const randomIdx = Math.floor(Math.random() * dialogues.length);
                 const selectedText = dialogues[randomIdx];
                 setMascotMessage(getProcessedDialogue(selectedText));
                 
-                if (currentPhase === 'period' || currentPhase === 'pre_period') {
-                    setMascotState('worry');
-                } else if (currentPhase === 'late') {
-                    if (MASCOT_DIALOGUES.late.includes(selectedText)) {
-                        setMascotState('worry');
-                    } else {
-                        setMascotState('smile'); 
-                    }
-                } else if (currentPhase === 'ovulation') {
-                    setMascotState('love');
-                } else if (currentPhase === 'follicular') {
-                    setMascotState(Math.random() > 0.5 ? 'encourage' : 'smile');
-                } else {
-                    setMascotState('smile');
-                }
+                if (currentPhase === 'period' || currentPhase === 'pre_period') setMascotState('worry');
+                else if (currentPhase === 'late') {
+                    if (MASCOT_DIALOGUES.late.includes(selectedText)) setMascotState('worry');
+                    else setMascotState('smile'); 
+                } else if (currentPhase === 'ovulation') setMascotState('love');
+                else if (currentPhase === 'follicular') setMascotState(Math.random() > 0.5 ? 'encourage' : 'smile');
+                else setMascotState('smile');
             };
 
             const handleCalendarPoke = () => {
                 setIsPoke(true);
                 setTimeout(() => setIsPoke(false), 500);
                 let pokeDialogues = ["誒？怎麼了嗎？", "{{name}} 在這喔。", "要乖乖記錄喔！", "戳我是想我了嗎？"];
-                if (bondLevel >= 2) {
-                    pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
-                }
+                if (bondLevel >= 2) pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
                 const randomIdx = Math.floor(Math.random() * pokeDialogues.length);
                 setMascotMessage(getProcessedDialogue(pokeDialogues[randomIdx]));
                 setMascotState(Math.random() > 0.5 ? 'love' : 'smile');
@@ -920,32 +951,21 @@
             const handleNurturePoke = () => {
                 setIsPoke(true);
                 setTimeout(() => setIsPoke(false), 500);
-                
                 const newCount = nurturePokeCount + 1;
                 setNurturePokeCount(newCount);
-
                 if (newCount >= 10) {
                     setIsShy(true);
                     setNurturePokeCount(0);
                     const shyDialogues = MASCOT_DIALOGUES.shy_reaction;
                     const randomIdx = Math.floor(Math.random() * shyDialogues.length);
                     setMascotMessage(getProcessedDialogue(shyDialogues[randomIdx]));
-                    
-                    setTimeout(() => {
-                        setIsShy(false);
-                        updateMascotDialogue(); 
-                    }, 4000);
+                    setTimeout(() => { setIsShy(false); updateMascotDialogue(); }, 4000);
                 } else {
                     let pokeDialogues = ["誒？怎麼了嗎？", "{{name}} 在這喔。", "要乖乖記錄喔！", "戳我是想我了嗎？"];
-                    if (bondLevel >= 2) {
-                        pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
-                    }
+                    if (bondLevel >= 2) pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
                     const randomIdx = Math.floor(Math.random() * pokeDialogues.length);
                     setMascotMessage(getProcessedDialogue(pokeDialogues[randomIdx]));
-                    
-                    if (!['period', 'late', 'pre_period'].includes(currentPhase)) {
-                         setMascotState(Math.random() > 0.5 ? 'love' : 'smile');
-                    }
+                    if (!['period', 'late', 'pre_period'].includes(currentPhase)) setMascotState(Math.random() > 0.5 ? 'love' : 'smile');
                 }
             };
 
