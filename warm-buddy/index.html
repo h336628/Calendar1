@@ -161,6 +161,7 @@
         };
 
         // --- Components ---
+        // LockScreen, Onboarding, Mascot, CalendarView, LogModal, SettingsView, StatsView...
 
         const LockScreen = ({ settings, inputPassword, setInputPassword, handleUnlock }) => (
             <div className="flex flex-col items-center justify-center h-full bg-pink-50/50 dark:bg-gray-900 p-6 relative overflow-hidden">
@@ -719,9 +720,9 @@
                         </div>
                     </div>
 
-                    {/* Chat Input Bar - 固定在底部，全寬且對齊 (移除半透明背景) */}
+                    {/* Chat Input Bar - 固定在底部，z-index 100 */}
                     {isChatMode && (
-                        <div className={`fixed left-0 w-full bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 p-3 z-50 animate-fade-in-up shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ${inputFocus ? 'bottom-0' : 'bottom-0'}`}>
+                        <div className={`fixed left-0 w-full bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 p-3 z-[100] animate-fade-in-up shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] ${inputFocus ? 'bottom-0' : 'bottom-20'}`}>
                             <div className="flex gap-2 w-full max-w-md mx-auto px-2">
                                 <input 
                                     type="text" 
@@ -757,19 +758,23 @@
             const [view, setView] = useState('onboarding');
             const [inputPassword, setInputPassword] = useState('');
             const [isLocked, setIsLocked] = useState(false);
+
             const [settings, setSettings] = useState(() => {
                 const saved = localStorage.getItem('warmBuddy_settings');
                 return saved ? JSON.parse(saved) : { name: '小公主', cycleLength: 28, periodLength: 5, enableMascot: true, notifications: true, hasOnboarded: false, password: null, darkMode: false, startDate: new Date().toISOString() };
             });
+
             const [logs, setLogs] = useState(() => {
                 const saved = localStorage.getItem('warmBuddy_logs');
                 return saved ? JSON.parse(saved) : {};
             });
+
             const [currentDate, setCurrentDate] = useState(new Date());
             const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
             const [showLogModal, setShowLogModal] = useState(false);
             const [mascotMessage, setMascotMessage] = useState("");
             const [mascotState, setMascotState] = useState("smile");
+            
             const [isPoke, setIsPoke] = useState(false);
             const [nurturePokeCount, setNurturePokeCount] = useState(0);
             const [isShy, setIsShy] = useState(false);
@@ -778,8 +783,11 @@
             useEffect(() => { localStorage.setItem('warmBuddy_logs', JSON.stringify(logs)); }, [logs]);
             
             useEffect(() => {
-                if (settings.darkMode) document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
+                if (settings.darkMode) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
             }, [settings.darkMode]);
 
             useEffect(() => {
@@ -821,32 +829,48 @@
                 return 'default';
             }, [logs, settings]);
 
-            const getProcessedDialogue = (text) => text.replace(/{{name}}/g, settings.name);
+            const getProcessedDialogue = (text) => {
+                return text.replace(/{{name}}/g, settings.name);
+            };
 
             useEffect(() => { updateMascotDialogue(); }, [currentPhase, settings.name]);
 
             const updateMascotDialogue = () => {
                 let dialogues = [];
-                if (currentPhase === 'late') dialogues = [...MASCOT_DIALOGUES.late, ...MASCOT_DIALOGUES.default];
-                else dialogues = MASCOT_DIALOGUES[currentPhase] || MASCOT_DIALOGUES.default;
+                if (currentPhase === 'late') {
+                    dialogues = [...MASCOT_DIALOGUES.late, ...MASCOT_DIALOGUES.default];
+                } else {
+                    dialogues = MASCOT_DIALOGUES[currentPhase] || MASCOT_DIALOGUES.default;
+                }
+
                 const randomIdx = Math.floor(Math.random() * dialogues.length);
                 const selectedText = dialogues[randomIdx];
                 setMascotMessage(getProcessedDialogue(selectedText));
                 
-                if (currentPhase === 'period' || currentPhase === 'pre_period') setMascotState('worry');
-                else if (currentPhase === 'late') {
-                    if (MASCOT_DIALOGUES.late.includes(selectedText)) setMascotState('worry');
-                    else setMascotState('smile'); 
-                } else if (currentPhase === 'ovulation') setMascotState('love');
-                else if (currentPhase === 'follicular') setMascotState(Math.random() > 0.5 ? 'encourage' : 'smile');
-                else setMascotState('smile');
+                if (currentPhase === 'period' || currentPhase === 'pre_period') {
+                    setMascotState('worry');
+                } else if (currentPhase === 'late') {
+                    if (MASCOT_DIALOGUES.late.includes(selectedText)) {
+                        setMascotState('worry');
+                    } else {
+                        setMascotState('smile'); 
+                    }
+                } else if (currentPhase === 'ovulation') {
+                    setMascotState('love');
+                } else if (currentPhase === 'follicular') {
+                    setMascotState(Math.random() > 0.5 ? 'encourage' : 'smile');
+                } else {
+                    setMascotState('smile');
+                }
             };
 
             const handleCalendarPoke = () => {
                 setIsPoke(true);
                 setTimeout(() => setIsPoke(false), 500);
                 let pokeDialogues = ["誒？怎麼了嗎？", "{{name}} 在這喔。", "要乖乖記錄喔！", "戳我是想我了嗎？"];
-                if (bondLevel >= 2) pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
+                if (bondLevel >= 2) {
+                    pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
+                }
                 const randomIdx = Math.floor(Math.random() * pokeDialogues.length);
                 setMascotMessage(getProcessedDialogue(pokeDialogues[randomIdx]));
                 setMascotState(Math.random() > 0.5 ? 'love' : 'smile');
@@ -855,21 +879,32 @@
             const handleNurturePoke = () => {
                 setIsPoke(true);
                 setTimeout(() => setIsPoke(false), 500);
+                
                 const newCount = nurturePokeCount + 1;
                 setNurturePokeCount(newCount);
+
                 if (newCount >= 10) {
                     setIsShy(true);
                     setNurturePokeCount(0);
                     const shyDialogues = MASCOT_DIALOGUES.shy_reaction;
                     const randomIdx = Math.floor(Math.random() * shyDialogues.length);
                     setMascotMessage(getProcessedDialogue(shyDialogues[randomIdx]));
-                    setTimeout(() => { setIsShy(false); updateMascotDialogue(); }, 4000);
+                    
+                    setTimeout(() => {
+                        setIsShy(false);
+                        updateMascotDialogue(); 
+                    }, 4000);
                 } else {
                     let pokeDialogues = ["誒？怎麼了嗎？", "{{name}} 在這喔。", "要乖乖記錄喔！", "戳我是想我了嗎？"];
-                    if (bondLevel >= 2) pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
+                    if (bondLevel >= 2) {
+                        pokeDialogues = [...pokeDialogues, ...MASCOT_DIALOGUES.special_high_bond];
+                    }
                     const randomIdx = Math.floor(Math.random() * pokeDialogues.length);
                     setMascotMessage(getProcessedDialogue(pokeDialogues[randomIdx]));
-                    if (!['period', 'late', 'pre_period'].includes(currentPhase)) setMascotState(Math.random() > 0.5 ? 'love' : 'smile');
+                    
+                    if (!['period', 'late', 'pre_period'].includes(currentPhase)) {
+                         setMascotState(Math.random() > 0.5 ? 'love' : 'smile');
+                    }
                 }
             };
 
