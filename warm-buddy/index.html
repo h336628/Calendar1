@@ -109,7 +109,9 @@
             Send: <g><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></g>,
             Key: <g><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></g>,
             XCircle: <g><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></g>,
-            User: <g><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></g>
+            User: <g><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></g>,
+            ChevronDown: <polyline points="6 9 12 15 18 9"></polyline>,
+            X: <g><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></g>
         };
 
         const Icon = ({ name, size = 24, className = "", ...props }) => {
@@ -298,13 +300,13 @@
                     </div>
                     
                     <div 
-                        className="absolute z-30 animate-pop flex flex-col gap-2 w-28"
+                        className="absolute z-30 animate-pop flex flex-col gap-2 w-28 touch-none"
                         style={toolPos ? { left: toolPos.x, top: toolPos.y } : { right: '1rem', bottom: '6rem' }}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                     >
-                        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg border border-white/50 dark:border-gray-700 text-center">
+                        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-3 rounded-2xl shadow-lg border border-white/50 dark:border-gray-700 text-center cursor-move">
                             <div className="text-[10px] text-gray-400 font-bold mb-0.5">SELECTED</div>
                             <div className="text-2xl font-black text-gray-700 dark:text-white font-mono leading-none">{selectedDate.split('-')[2]}</div>
                             <div className="text-xs font-bold text-gray-400">{selectedDate.split('-')[1]}月</div>
@@ -418,7 +420,10 @@
                                     type="password" 
                                     placeholder="貼上您的 API Key (選填)" 
                                     value={settings.apiKey || ''} 
-                                    onChange={e => setSettings({...settings, apiKey: e.target.value})} 
+                                    onChange={e => {
+                                        const val = e.target.value.trim();
+                                        setSettings({...settings, apiKey: val});
+                                    }} 
                                     className="bg-gray-50 dark:bg-gray-700 dark:text-white w-full p-3 rounded-xl text-center tracking-widest font-bold text-sm" 
                                 />
                                 <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-[10px] text-blue-400 text-right underline">點此免費申請 API Key</a>
@@ -462,34 +467,6 @@
         };
 
         const StatsView = ({ logs, settings, formatDate }) => {
-            // --- 新增：計算天數、關係等資料 ---
-            const getDaysKnown = () => {
-                let start = settings.startDate ? new Date(settings.startDate) : null;
-                if (!start) {
-                    // 回退機制：如果沒有記錄開始日期，抓最早的一筆紀錄，或預設為今天
-                    const logDates = Object.keys(logs).sort();
-                    if (logDates.length > 0) {
-                        start = new Date(logDates[0]);
-                    } else {
-                        start = new Date();
-                    }
-                }
-                const diffTime = Math.abs(new Date() - start);
-                return Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-            };
-
-            const getBondStatus = () => {
-                const logCount = Object.keys(logs).length;
-                if (logCount > 30) return { text: "戀人", color: "text-rose-500", icon: "Heart" };
-                if (logCount > 10) return { text: "曖昧", color: "text-pink-400", icon: "Heart" };
-                if (logCount > 0) return { text: "朋友", color: "text-blue-400", icon: "Smile" };
-                return { text: "初識", color: "text-gray-400", icon: "User" }; // Default
-            };
-
-            const daysKnown = getDaysKnown();
-            const bondStatus = getBondStatus();
-
-            // --- 原有統計邏輯 ---
             const logDates = Object.keys(logs).sort();
             const totalLogs = logDates.length;
             let periodCount = 0;
@@ -541,12 +518,11 @@
                             <div className="text-xs text-gray-500 dark:text-gray-300 space-y-1">
                                 <p>身高: 183cm · 巨蟹座</p>
                                 <p>喜歡: 熱可可、照顧妳</p>
+                                {/* 相識天數計算邏輯 */}
                                 <div className="flex items-center gap-3 mt-2">
-                                    <span className={`font-bold ${bondStatus.color} flex items-center gap-1`}>
-                                        <Icon name={bondStatus.icon} size={12} /> {bondStatus.text}
-                                    </span>
-                                    <span className="text-gray-400">|</span>
-                                    <span className="text-gray-600 dark:text-gray-400 font-bold">認識第 {daysKnown} 天</span>
+                                     <span className="text-gray-600 dark:text-gray-400 font-bold">
+                                         {settings.startDate ? `認識第 ${Math.ceil(Math.abs(new Date() - new Date(settings.startDate)) / (1000 * 60 * 60 * 24))} 天` : '初次見面'}
+                                     </span>
                                 </div>
                             </div>
                         </div>
@@ -595,6 +571,7 @@
             const bondColor = bondLevel === 0 ? "text-gray-400" : bondLevel === 1 ? "text-blue-400" : bondLevel === 2 ? "text-pink-400" : "text-rose-500";
             const handleImgError = (e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; };
             
+            // 圖片對應邏輯 (新增 lovey_happy)
             const getNurtureImage = () => {
                 if (isShy) return NORMAL_IMAGES.shy;
                 if (currentPhase === 'period') return NORMAL_IMAGES.cocoa;
@@ -632,6 +609,9 @@
                     });
 
                     const data = await response.json();
+                    if (data.error) {
+                        throw new Error(data.error.message || "API Error");
+                    }
                     if (data.candidates && data.candidates[0].content) {
                         const reply = data.candidates[0].content.parts[0].text;
                         setMascotMessage(reply);
@@ -641,7 +621,7 @@
                     }
                 } catch (error) {
                     console.error("Gemini API Error:", error);
-                    setMascotMessage("網路怪怪的，聽不清楚妳說什麼 > <");
+                    setMascotMessage(`連線失敗: ${error.message}`);
                 } finally {
                     setIsTyping(false);
                     setInputText('');
@@ -669,7 +649,8 @@
                     <div className="flex-1 w-full flex items-end justify-center relative z-10 -mb-10">
                         <div className={`transition-transform duration-200 ${isPoke ? 'scale-95' : 'hover:scale-105'} relative`}>
                             
-                            <div className="absolute -top-40 left-1/3 -translate-x-1/2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-6 py-4 rounded-3xl shadow-lg border-2 border-pink-100 dark:border-gray-600 w-64 text-center animate-float z-20">
+                            {/* 對話框 (靠左 & 自動換行) */}
+                            <div className="absolute -top-40 left-0 transform -translate-x-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-3 rounded-3xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-600 w-max max-w-[140px] text-left animate-float z-20">
                                 {isTyping ? (
                                     <div className="flex justify-center space-x-1 h-6 items-center">
                                         <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
@@ -677,39 +658,21 @@
                                         <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
                                     </div>
                                 ) : (
-                                    <p className="text-gray-600 dark:text-gray-200 font-bold whitespace-pre-line text-sm">{mascotMessage}</p>
+                                    <p className="text-gray-600 dark:text-gray-200 font-bold whitespace-pre-wrap break-words text-sm leading-normal">{mascotMessage}</p>
                                 )}
                                 
-                                <button 
-                                    onClick={() => setIsChatMode(!isChatMode)}
-                                    className="absolute -right-3 -bottom-3 bg-pink-400 text-white p-2 rounded-full shadow-md hover:bg-pink-500 transition-colors"
-                                >
-                                    {isChatMode ? <Icon name="X" size={14} /> : <Icon name="MessageCircle" size={14} />}
-                                </button>
+                                {/* 只顯示開啟按鈕，關閉在下方工具列 */}
+                                {!isChatMode && (
+                                    <button 
+                                        onClick={() => setIsChatMode(true)}
+                                        className="absolute -right-3 -bottom-3 bg-pink-400 text-white p-2 rounded-full shadow-md hover:bg-pink-500 transition-colors"
+                                    >
+                                        <Icon name="MessageCircle" size={14} />
+                                    </button>
+                                )}
 
-                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 rotate-45 w-4 h-4 bg-white dark:bg-gray-800 border-b-2 border-r-2 border-pink-100 dark:border-gray-600"></div>
+                                <div className="absolute -bottom-2 right-full translate-x-6 rotate-45 w-4 h-4 bg-white dark:bg-gray-800 border-b-2 border-r-2 border-pink-100 dark:border-gray-600"></div>
                             </div>
-
-                            {isChatMode && (
-                                <div className="absolute -top-64 left-1/2 -translate-x-1/2 w-72 animate-fade-in-up z-30">
-                                    <div className="bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-xl border border-pink-200 dark:border-gray-600 flex gap-2">
-                                        <input 
-                                            type="text" 
-                                            value={inputText}
-                                            onChange={(e) => setInputText(e.target.value)}
-                                            placeholder="想跟阿暖說什麼？"
-                                            className="flex-1 bg-gray-50 dark:bg-gray-700 dark:text-white rounded-xl px-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-200"
-                                            onKeyPress={(e) => e.key === 'Enter' && callGemini(inputText)}
-                                        />
-                                        <button 
-                                            onClick={() => callGemini(inputText)}
-                                            className="bg-pink-400 text-white p-2 rounded-xl hover:bg-pink-500 transition-colors"
-                                        >
-                                            <Icon name="Send" size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
 
                             <div 
                                 onClick={handleNurturePoke}
@@ -720,6 +683,35 @@
                             </div>
                         </div>
                     </div>
+
+                    {/* Chat Input Bar - 固定在底部，全寬且對齊 */}
+                    {isChatMode && (
+                        <div className="absolute bottom-20 left-0 w-full bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 p-3 z-30 animate-fade-in-up shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                            <div className="flex gap-2 w-full max-w-md mx-auto">
+                                <input 
+                                    type="text" 
+                                    value={inputText}
+                                    onChange={(e) => setInputText(e.target.value)}
+                                    placeholder="想跟阿暖說什麼？"
+                                    className="flex-1 bg-gray-100 dark:bg-gray-800 dark:text-white rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all"
+                                    onKeyPress={(e) => e.key === 'Enter' && callGemini(inputText)}
+                                    autoFocus
+                                />
+                                <button 
+                                    onClick={() => callGemini(inputText)}
+                                    className="bg-pink-400 text-white p-2 rounded-full hover:bg-pink-500 transition-colors flex-shrink-0 w-10 h-10 flex items-center justify-center shadow-md"
+                                >
+                                    <Icon name="Send" size={18} />
+                                </button>
+                                <button 
+                                    onClick={() => setIsChatMode(false)}
+                                    className="bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-300 p-2 rounded-full hover:bg-gray-300 transition-colors flex-shrink-0 w-10 h-10 flex items-center justify-center"
+                                >
+                                    <Icon name="ChevronDown" size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
