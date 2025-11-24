@@ -565,7 +565,6 @@
         const NurtureView = ({ bondLevel, isShy, currentPhase, mascotState, handleNurturePoke, mascotMessage, isPoke, settings, setMascotMessage, setMascotState }) => {
             const [inputText, setInputText] = useState('');
             const [isTyping, setIsTyping] = useState(false);
-            const [inputFocus, setInputFocus] = useState(false);
             
             const bondText = bondLevel === 0 ? "初識" : bondLevel === 1 ? "朋友" : bondLevel === 2 ? "曖昧" : "戀人";
             const bondColor = bondLevel === 0 ? "text-gray-400" : bondLevel === 1 ? "text-blue-400" : bondLevel === 2 ? "text-pink-400" : "text-rose-500";
@@ -684,7 +683,7 @@
                         <div className={`transition-transform duration-200 ${isPoke ? 'scale-95' : 'hover:scale-105'} relative`}>
                             
                             {/* 對話框 (靠左 & 自動換行) */}
-                            <div className="absolute -top-40 right-[45%] transform translate-x-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-3 rounded-3xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-600 w-max max-w-[140px] text-left animate-float z-20">
+                            <div className="absolute -top-40 left-0 transform -translate-x-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-3 rounded-3xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-600 w-max max-w-[140px] text-left animate-float z-20">
                                 {isTyping ? (
                                     <div className="flex justify-center space-x-1 h-6 items-center">
                                         <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
@@ -694,9 +693,7 @@
                                 ) : (
                                     <p className="text-gray-600 dark:text-gray-200 font-bold whitespace-pre-wrap break-words text-sm leading-relaxed">{mascotMessage}</p>
                                 )}
-                                
-                                {/* 對話框箭頭 (指向暖男) */}
-                                <div className="absolute -bottom-2 left-2 rotate-45 w-4 h-4 bg-white dark:bg-gray-800 border-b-2 border-r-2 border-pink-100 dark:border-gray-600"></div>
+                                <div className="absolute -bottom-2 right-2 rotate-45 w-4 h-4 bg-white dark:bg-gray-800 border-b-2 border-r-2 border-pink-100 dark:border-gray-600"></div>
                             </div>
 
                             <div 
