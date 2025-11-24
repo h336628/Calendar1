@@ -25,11 +25,16 @@
                     },
                     animation: {
                         'fade-in-up': 'fadeInUp 0.3s ease-out forwards',
+                        'slide-down': 'slideDown 0.3s ease-out forwards',
                     },
                     keyframes: {
                         fadeInUp: {
                             '0%': { opacity: '0', transform: 'translateY(10px)' },
                             '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        slideDown: {
+                            '0%': { opacity: '0', transform: 'translate(-50%, -20px)' },
+                            '100%': { opacity: '1', transform: 'translate(-50%, 0)' },
                         }
                     }
                 }
@@ -111,7 +116,8 @@
             XCircle: <g><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></g>,
             User: <g><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></g>,
             ChevronDown: <polyline points="6 9 12 15 18 9"></polyline>,
-            X: <g><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></g>
+            X: <g><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></g>,
+            AlertCircle: <g><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></g>
         };
 
         const Icon = ({ name, size = 24, className = "", ...props }) => {
@@ -161,8 +167,7 @@
         };
 
         // --- Components ---
-        // (LockScreen, Onboarding, Mascot, CalendarView, LogModal, SettingsView, StatsView 程式碼不變，省略以節省長度，請使用上方最後一次提供的版本，這裡重點是 NurtureView 的邏輯修改)
-        
+
         const LockScreen = ({ settings, inputPassword, setInputPassword, handleUnlock }) => (
             <div className="flex flex-col items-center justify-center h-full bg-pink-50/50 dark:bg-gray-900 p-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-full bg-[url('Love_Happy.png')] bg-cover opacity-10 blur-sm z-0"></div>
@@ -507,6 +512,7 @@
                 <div className="h-full overflow-y-auto p-6 pt-10 pb-24 space-y-6">
                     <h2 className="text-2xl font-bold text-gray-700 dark:text-white">週期統計</h2>
                     
+                    {/* --- 新增：阿暖的小檔案卡片 --- */}
                     <div className="bg-gradient-to-br from-pink-50 to-white dark:from-gray-800 dark:to-gray-700 p-5 rounded-3xl shadow-sm border border-pink-100 dark:border-gray-600 flex gap-4 items-center">
                         <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white dark:border-gray-600 shadow-md flex-shrink-0 bg-pink-100">
                             <img src={Q_IMAGES.smile} className="w-full h-full object-cover" alt="阿暖" />
@@ -518,6 +524,7 @@
                             <div className="text-xs text-gray-500 dark:text-gray-300 space-y-1">
                                 <p>身高: 183cm · 巨蟹座</p>
                                 <p>喜歡: 熱可可、照顧妳</p>
+                                {/* 相識天數計算邏輯 */}
                                 <div className="flex items-center gap-3 mt-2">
                                      <span className="text-gray-600 dark:text-gray-400 font-bold">
                                          {settings.startDate ? `認識第 ${Math.ceil(Math.abs(new Date() - new Date(settings.startDate)) / (1000 * 60 * 60 * 24))} 天` : '初次見面'}
@@ -527,6 +534,7 @@
                         </div>
                     </div>
 
+                    {/* 原有統計卡片 */}
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-3xl shadow-sm border border-pink-50 dark:border-gray-700 flex items-center justify-between">
                         <div>
                             <div className="text-sm text-gray-400 font-bold mb-1">預測下次經期</div>
@@ -563,7 +571,8 @@
         const NurtureView = ({ bondLevel, isShy, currentPhase, mascotState, handleNurturePoke, mascotMessage, isPoke, settings, setMascotMessage, setMascotState }) => {
             const [inputText, setInputText] = useState('');
             const [isTyping, setIsTyping] = useState(false);
-            const [inputFocus, setInputFocus] = useState(false);
+            // 新增：錯誤訊息狀態
+            const [apiError, setApiError] = useState(null);
             
             const bondText = bondLevel === 0 ? "初識" : bondLevel === 1 ? "朋友" : bondLevel === 2 ? "曖昧" : "戀人";
             const bondColor = bondLevel === 0 ? "text-gray-400" : bondLevel === 1 ? "text-blue-400" : bondLevel === 2 ? "text-pink-400" : "text-rose-500";
@@ -580,14 +589,10 @@
 
             const callGemini = async (text) => {
                 const safeKey = settings.apiKey ? settings.apiKey.trim() : "";
-                
-                if (!safeKey) {
-                    setMascotMessage("如果要跟我聊天，要先去設定頁面輸入 API Key 喔！");
-                    return;
-                }
+                if (!safeKey) return; // Input is disabled anyway
 
                 setIsTyping(true);
-                setMascotMessage("正在思考...");
+                setApiError(null); // 清除舊錯誤
 
                 try {
                     const prompt = `
@@ -602,6 +607,7 @@
                         女朋友對你說：「${text}」
                     `;
 
+                    // 這裡只保留一段標準的 fetch 邏輯，讓它單純化
                     const tryFetch = async (modelName) => {
                         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${safeKey}`, {
                             method: 'POST',
@@ -609,13 +615,16 @@
                             body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                         });
                         const data = await response.json();
+                        
                         if (!response.ok) {
-                            throw new Error(data.error ? data.error.message : `HTTP error! status: ${response.status}`);
+                            // 直接拋出 Google 回傳的錯誤訊息
+                            throw new Error(data.error ? `${data.error.code}: ${data.error.message}` : `HTTP error! status: ${response.status}`);
                         }
                         return data;
                     };
 
                     let data;
+                    // 自動輪詢多個模型版本
                     try {
                         data = await tryFetch('gemini-1.5-flash');
                     } catch (e) {
@@ -647,15 +656,10 @@
                     }
                 } catch (error) {
                     console.error("Gemini API Error:", error);
-                    let errorMsg = "連線失敗 > <";
-                    if (error.message.includes("400") || error.message.includes("INVALID_ARGUMENT")) {
-                        errorMsg = "API Key 格式好像不對喔，請檢查一下設定頁面。";
-                    } else if (error.message.includes("403") || error.message.includes("PERMISSION_DENIED")) {
-                        errorMsg = "API Key 權限不足！請檢查 Google Cloud Console 是否已啟用 'Generative Language API'。";
-                    } else if (error.message.includes("404") || error.message.includes("NOT_FOUND")) {
-                        errorMsg = "找不到 AI 模型，請稍後再試。";
-                    }
-                    setMascotMessage(errorMsg);
+                    // 設定錯誤訊息到獨立的 Toast 狀態
+                    setApiError(`錯誤: ${error.message}`);
+                    // 3秒後自動消失
+                    setTimeout(() => setApiError(null), 5000);
                 } finally {
                     setIsTyping(false);
                     setInputText('');
@@ -667,6 +671,14 @@
                     <div className="absolute top-20 left-10 text-pink-100 dark:text-gray-700 animate-float"><Icon name="Heart" size={60} /></div>
                     <div className="absolute top-40 right-10 text-pink-100 dark:text-gray-700 animate-float" style={{animationDelay: '1s'}}><Icon name="Heart" size={40} /></div>
                     
+                    {/* 錯誤訊息 Toast (顯示在最上方) */}
+                    {apiError && (
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-100 dark:bg-red-900 border border-red-400 text-red-700 dark:text-red-200 px-4 py-2 rounded-full shadow-lg z-50 text-xs flex items-center gap-2 animate-bounce">
+                            <Icon name="AlertCircle" size={16} />
+                            <span>{apiError}</span>
+                        </div>
+                    )}
+
                     <div className="w-full px-8 z-10">
                         <div className="flex justify-between items-end mb-2">
                             <h2 className="text-2xl font-bold text-gray-700 dark:text-white">暖男相處</h2>
@@ -683,7 +695,8 @@
                     <div className="flex-1 w-full flex items-end justify-center relative z-10 -mb-10">
                         <div className={`transition-transform duration-200 ${isPoke ? 'scale-95' : 'hover:scale-105'} relative`}>
                             
-                            <div className="absolute -top-40 left-0 transform -translate-x-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-3 rounded-3xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-600 w-max max-w-[140px] text-left animate-float z-20">
+                            {/* 對話框 (靠左) */}
+                            <div className="absolute -top-40 right-[45%] transform translate-x-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm px-4 py-3 rounded-3xl rounded-bl-none shadow-lg border-2 border-pink-100 dark:border-gray-600 w-max max-w-[140px] text-left animate-float z-20">
                                 {isTyping ? (
                                     <div className="flex justify-center space-x-1 h-6 items-center">
                                         <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
@@ -707,16 +720,14 @@
                         </div>
                     </div>
 
-                    {/* Chat Input Bar */}
-                    <div className={`fixed left-0 w-full bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 p-3 z-[999] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300 ${inputFocus ? 'bottom-0' : 'bottom-20'}`}>
+                    {/* Chat Input Bar - 固定在底部 (導覽列上方) */}
+                    <div className={`absolute bottom-20 left-0 w-full bg-white dark:bg-gray-900 border-t border-pink-100 dark:border-gray-800 p-3 z-[999] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]`}>
                         <div className="flex gap-2 w-full max-w-md mx-auto px-2">
                             <input 
                                 type="text" 
                                 value={inputText}
                                 disabled={!hasApiKey}
                                 onChange={(e) => setInputText(e.target.value)}
-                                onFocus={() => setInputFocus(true)}
-                                onBlur={() => setInputFocus(false)}
                                 placeholder={hasApiKey ? "想跟阿暖說什麼？" : "請先設定 API Key 才能聊天喔"}
                                 className={`flex-1 bg-gray-100 dark:bg-gray-800 dark:text-white rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 transition-all ${!hasApiKey && 'opacity-50 cursor-not-allowed'}`}
                                 onKeyPress={(e) => e.key === 'Enter' && hasApiKey && callGemini(inputText)}
